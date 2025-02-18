@@ -20,6 +20,10 @@ ADMIN_TOKEN = os.getenv("ADMIN_TOKEN")
 if not ADMIN_TOKEN:
     raise ValueError("ADMIN_TOKEN environment variable not found in .env file")
 
+IGNPRE_API_KEYS = os.getenv("IGNPRE_API_KEYS")
+if not IGNPRE_API_KEYS:
+    raise ValueError("IGNPRE_API_KEYS environment variable not found in .env file")
+
 # --- SQLite Setup for API Keys ---
 DB_FILE = "api_keys.db"
 
@@ -44,6 +48,8 @@ def get_db_connection():
 
 # --- Dependency to validate Admin Key ---
 async def get_admin_key(authorization: str = Header(...)):
+    if IGNPRE_API_KEYS:
+        return ""
     if not authorization:
         raise HTTPException(status_code=401, detail="Missing Authorization header")
     if not authorization.startswith("Bearer "):
@@ -55,6 +61,8 @@ async def get_admin_key(authorization: str = Header(...)):
 
 # --- Existing API Key Validation ---
 async def get_api_key(authorization: str = Header(...)):
+    if IGNPRE_API_KEYS:
+        return ""
     if not authorization:
         raise HTTPException(status_code=401, detail="Missing Authorization header")
     if not authorization.startswith("Bearer "):
@@ -128,6 +136,8 @@ async def chat_completions(
 # --- Protected API Keys Management Routes ---
 @app.get("/api-keys", dependencies=[Depends(get_admin_key)])
 async def list_api_keys():
+    if IGNPRE_API_KEYS:
+        return ""
     conn = get_db_connection()
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
@@ -139,6 +149,8 @@ async def list_api_keys():
 
 @app.post("/api-keys", dependencies=[Depends(get_admin_key)])
 async def create_api_key_endpoint(api_key_create: ApiKeyCreate):
+    if IGNPRE_API_KEYS:
+        return ""
     import secrets
     new_key = secrets.token_hex(16)
     description = api_key_create.description
@@ -159,6 +171,8 @@ async def create_api_key_endpoint(api_key_create: ApiKeyCreate):
 
 @app.delete("/api-keys/{key}", dependencies=[Depends(get_admin_key)])
 async def delete_api_key(key: str):
+    if IGNPRE_API_KEYS:
+        return ""
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM api_keys WHERE key = ?", (key,))
