@@ -2,14 +2,14 @@
 
 ## Overview
 
-DuckDuckGo AI OpenAI API is a FastAPI-based service that mimics OpenAI's API while using DuckDuckGo's AI models for chat completion. This API supports both streaming and non-streaming responses and provides API key management for access control.
-
+DuckDuckGo AI OpenAI API is a free ai chat completions FastAPI-based service that mimics OpenAI's API while using DuckDuckGo's AI models. The API supports both streaming and non-streaming responses and includes API key management. 
 ## Features
 
-- Chat completion with DuckDuckGo AI models.
+- Chat completion with DuckDuckGo AI models (o3-mini, gpt-4o-mini, claude-3-haiku-20240307, meta-llama/Llama-3.3-70B-Instruct-Turbo, mistralai/Mixtral-8x7B-Instruct-v0.1).
 - Streaming and non-streaming response support.
 - API key authentication and management.
 - Admin authentication for API key creation and deletion.
+- Option to bypass API key validation using the `IGNPRE_API_KEYS` environment variable.
 - SQLite database for storing API keys.
 
 ---
@@ -36,6 +36,10 @@ Create a `.env` file from `example.env` using the following command:
 ```bash
 cp example.env .env
 ```
+Then, edit the .env file to include the following required variables:
+
+ - ADMIN_TOKEN: A secret token used for admin authentication.
+ - IGNPRE_API_KEYS: A flag to bypass API key validation.
 
 ### 4. Run the API Server
 
