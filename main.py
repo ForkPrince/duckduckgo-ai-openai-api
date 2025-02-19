@@ -1,4 +1,5 @@
 from typing import List, Optional
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import time
 import json
@@ -133,6 +134,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/", response_class=HTMLResponse)
+async def serve_html():
+    with open("website.html", "r", encoding="utf-8") as file:
+        html_content = file.read()
+    return HTMLResponse(content=html_content)
 
 # --- Chat Completion Endpoint ---
 @app.post("/chat/completions")
