@@ -2,31 +2,48 @@ from typing import List, Optional
 from pydantic import BaseModel
 import time
 import json
+import os
 import sqlite3
-import os  # Added for environment variables
+import logging
+
 from fastapi import FastAPI, Header, HTTPException, Depends
 from starlette.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from dotenv import load_dotenv  # Added for .env loading
-
+from dotenv import load_dotenv
+import psycopg2
 from duckduckgo_search import DDGS
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file
 load_dotenv()
 
-# Check for required admin token
-ADMIN_TOKEN = os.getenv("ADMIN_TOKEN")
-if not ADMIN_TOKEN:
-    raise ValueError("ADMIN_TOKEN environment variable not found in .env file")
-
 IGNPRE_API_KEYS = os.getenv("IGNPRE_API_KEYS")
-if not IGNPRE_API_KEYS:
-    raise ValueError("IGNPRE_API_KEYS environment variable not found in .env file")
+ADMIN_TOKEN = os.getenv("ADMIN_TOKEN")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-# --- SQLite Setup for API Keys ---
-DB_FILE = "api_keys.db"
+# Determine and log the current mode
+if IGNPRE_API_KEYS == "True":
+    db_mode = "IGNPRE_API_KEYS"
+elif DATABASE_URL:
+    db_mode = "Postgres"
+else:
+    db_mode = "SQLite"
+logger.info("Database mode: %s", db_mode)
 
+# --- Database Connection Setup ---
+def get_db_connection():
+    if DATABASE_URL:
+        logger.info("Connecting to PostgreSQL.")
+        return psycopg2.connect(DATABASE_URL, sslmode='require')
+    else:
+        logger.info("Connecting to SQLite.")
+        return sqlite3.connect("api_keys.db")
+
+# --- Initialize Database ---
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
