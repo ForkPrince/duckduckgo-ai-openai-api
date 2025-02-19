@@ -1,252 +1,200 @@
-# DuckDuckGo AI OpenAI API - Documentation
+# duckduckgo-ai-openai-api Documentation
 
-## Overview
+DuckDuckGo AI OpenAI API is a free, powerful AI chat completions service built with FastAPI. It mimics OpenAI's API while leveraging DuckDuckGo's AI models to deliver chat completions with both streaming and non-streaming responses.
 
-DuckDuckGo AI OpenAI API is a free ai chat completions FastAPI-based service that mimics OpenAI's API while using DuckDuckGo's AI models. The API supports both streaming and non-streaming responses and includes API key management. 
-## Features
-
-- Chat completion with DuckDuckGo AI models (o3-mini, gpt-4o-mini, claude-3-haiku-20240307, meta-llama/Llama-3.3-70B-Instruct-Turbo, mistralai/Mixtral-8x7B-Instruct-v0.1).
-- Streaming and non-streaming response support.
-- API key authentication and management.
-- Admin authentication for API key creation and deletion.
-- Option to bypass API key validation using the `IGNPRE_API_KEYS` environment variable.
-- SQLite database for storing API keys.
+The API supports API key management and uses databases like SQLite or PostgreSQL to store API keys. Alternatively, API key validation can be bypassed, allowing the service to run without using any databases.
 
 ---
 
-## Installation and Setup
+## Project Structure
 
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/dhiaaeddine16/duckduckgo-ai-openai-api.git
-cd duckduckgo-ai-openai-api
+```
+project/
+├── main.py          # FastAPI application with chat completion and API key endpoints
+├── test.py          # Script to test the API endpoints
+└── requirements.txt # Python dependencies
 ```
 
-### 2. Install Dependencies
+---
 
-```bash
-pip install -r requirements.txt
-```
+## Features
 
-### 3. Setup Environment Variables
+- **Chat Completions Endpoint**: Processes chat requests using DuckDuckGo search and returns responses. Supports both streaming and non-streaming modes.
+- **API Key Management**: Create, list, and delete API keys to secure access to the chat endpoint.
+- **Flexible Database Support**: Uses PostgreSQL or SQLite to store API keys. If API key validation is bypassed, no database is required.
 
-Create a `.env` file from `example.env` using the following command:
+---
+
+## Installation
+
+1. **Clone the repository**:
+
+   ```bash
+   git clone https://github.com/dhiaaeddine16/duckduckgo-ai-openai-api.git
+   cd duckduckgo-ai-openai-api
+   ```
+
+2. **Create a virtual environment** (optional but recommended):
+
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows use: venv\Scripts\activate
+   ```
+
+3. **Install the required dependencies**:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+---
+
+## Configuration
+
+Copy the `example.env` file to `.env` in the project root using the following command and configure the environment variables:
 
 ```bash
 cp example.env .env
 ```
-Then, edit the .env file to include the following required variables:
 
- - ADMIN_TOKEN: A secret token used for admin authentication.
- - IGNPRE_API_KEYS: A flag to bypass API key validation.
+Then, open the `.env` file and update the necessary configurations:
 
-### 4. Run the API Server
+```ini
+# .env
+
+# When set to "True", bypasses database initialization for API keys
+IGNPRE_API_KEYS=False
+
+# Admin token for managing API keys (required for admin endpoints)
+ADMIN_TOKEN=your_admin_token_here
+
+# Optional: PostgreSQL database connection URL. If not provided, SQLite is used.
+DATABASE_URL=postgresql://user:password@host:port/dbname
+```
+
+> **Note:** If `DATABASE_URL` is not provided, the application defaults to using an SQLite database named `api_keys.db`.
+
+## Running the Application
+
+You can run the FastAPI application using Uvicorn:
+
+```bash
+uvicorn main:app --host 0.0.0.0 --port 8080
+```
+
+Alternatively, you can run `main.py` directly:
 
 ```bash
 python main.py
-```
-
-The API server will start at `http://0.0.0.0:8080`
-
----
-### Example API Requests Using `python`
-
-```python
-from openai import OpenAI
-BASE_URL = "http://0.0.0.0:8080"
-api_key = "******"
-client = OpenAI(
-    api_key=api_key,
-    base_url=BASE_URL
-)
-chat_completion = client.chat.completions.create(
-    messages=[
-        {
-            "role": "user",
-            "content": "who are you",
-        }
-    ],
-    model="o3-mini",
-)
-```
-
-### Example API Requests Using `curl`
-
-#### Send a Chat Completion Request
-
-```bash
-curl -X POST "http://0.0.0.0:8080/chat/completions" -H "Authorization: Bearer <API_KEY>" -H "Content-Type: application/json" -d '{"model": "llama-3.3-70b", "messages": [{"role": "user", "content": "who are you?"}], "stream": false}'
-```
-
-#### Create an API Key
-
-```bash
-curl -X POST "http://0.0.0.0:8080/api-keys" -H "Authorization: Bearer <ADMIN_TOKEN>" -H "Content-Type: application/json" -d '{"description": "Test API Key"}'
-```
-
-#### Get All API Keys
-
-```bash
-curl -X GET "http://0.0.0.0:8080/api-keys" -H "Authorization: Bearer <ADMIN_TOKEN>"
-```
-
-#### Delete an API Key
-
-```bash
-curl -X DELETE "http://0.0.0.0:8080/api-keys/{key}" -H "Authorization: Bearer <ADMIN_TOKEN>"
 ```
 
 ---
 
 ## API Endpoints
 
-### Chat Completion
+### 1. Chat Completions
 
-#### Endpoint:
+- **Endpoint**: `/chat/completions`
+- **Method**: `POST`
+- **Description**: Returns a chat completion based on the provided messages. If `stream` is `True`, a streaming response (NDJSON format) is returned.
+- **Security**: Requires a valid API key in the `Authorization` header (`Bearer <API_KEY>`), unless `IGNPRE_API_KEYS` is set to `True`.
 
-```http
-POST /chat/completions
-```
+#### Request Payload
 
-#### Request Headers:
+| Field      | Type    | Description                                                      |
+| ---------- | ------- | ---------------------------------------------------------------- |
+| `model`    | string  | The model name. Defaults to `llama-3.3-70b` if not provided.     |
+| `messages` | array   | A list of messages, each with `role` and `content`.              |
+| `stream`   | boolean | Optional flag to enable streaming response. Defaults to `False`. |
+
+**Example Request**:
 
 ```json
 {
-  "Authorization": "Bearer <API_KEY>"
-}
-```
-
-#### Request Body:
-
-```json
-{
-  "model": "llama-3.3-70b",
+  "model": "o3-mini",
   "messages": [
-    { "role": "user", "content": "who are you?" }
+    { "role": "user", "content": "Who are you?" }
   ],
   "stream": false
 }
 ```
 
-#### Response:
+#### Response
+
+- **Non-Streaming**: Returns a JSON object containing the chat completion.
+- **Streaming**: Returns a streaming response with data chunks in NDJSON format.
+
+---
+
+### 2. API Key Management
+
+#### a. List API Keys
+
+- **Endpoint**: `/api-keys`
+- **Method**: `GET`
+- **Description**: Retrieves all API keys stored in the database.
+- **Security**: Requires admin authorization. Include the admin token in the header as `Authorization: Bearer <ADMIN_TOKEN>`.
+
+#### b. Create API Key
+
+- **Endpoint**: `/api-keys`
+- **Method**: `POST`
+- **Description**: Generates a new API key along with an optional description, and stores it in the database.
+- **Security**: Requires admin authorization.
+
+**Request Payload**:
+
+| Field         | Type   | Description                           |
+| ------------- | ------ | ------------------------------------- |
+| `description` | string | Optional description for the API key. |
+
+**Example Request**:
 
 ```json
 {
-  "id": 123456,
-  "object": "chat.completion",
-  "created": 1700000000,
-  "model": "llama-3.3-70b",
-  "choices": [
-    { "message": { "role": "assistant", "content": "I am a chatbot powered by DuckDuckGo AI." } }
-  ]
+  "description": "Test key created via test.py"
 }
 ```
 
-### Create an API Key
+#### c. Delete API Key
 
-#### Endpoint:
+- **Endpoint**: `/api-keys/{key}`
+- **Method**: `DELETE`
+- **Description**: Deletes a specific API key from the database.
+- **Security**: Requires admin authorization.
 
-```http
-POST /api-keys
-```
+**Example**:
 
-#### Request Headers:
-
-```json
-{
-  "Authorization": "Bearer <ADMIN_TOKEN>"
-}
-```
-
-#### Request Body:
-
-```json
-{
-  "description": "Test API Key"
-}
-```
-
-#### Response:
-
-```json
-{
-  "id": 1,
-  "key": "your_generated_api_key",
-  "description": "Test API Key"
-}
-```
-
-### Get All API Keys
-
-#### Endpoint:
-
-```http
-GET /api-keys
-```
-
-#### Request Headers:
-
-```json
-{
-  "Authorization": "Bearer <ADMIN_TOKEN>"
-}
-```
-
-#### Response:
-
-```json
-{
-  "api_keys": [
-    { "id": 1, "key": "your_api_key", "description": "Test API Key", "created_at": "2024-02-18 12:00:00" }
-  ]
-}
-```
-
-### Delete an API Key
-
-#### Endpoint:
-
-```http
-DELETE /api-keys/{key}
-```
-
-#### Request Headers:
-
-```json
-{
-  "Authorization": "Bearer <ADMIN_TOKEN>"
-}
-```
-
-#### Response:
-
-```json
-{
-  "detail": "API Key deleted"
-}
+```bash
+DELETE /api-keys/your_api_key_here
 ```
 
 ---
 
-## Running Tests
+## Testing the API
 
-Use `test.py` to verify API functionality:
+The `test.py` script demonstrates how to interact with the API endpoints. It performs the following actions:
+
+1. **Create a new API key** using the admin endpoint.
+2. **Initialize the client** with the newly created API key.
+3. **Test non-streaming chat completion** by sending a request to `/chat/completions`.
+4. **Test streaming chat completion** and output the streamed response.
+5. **Retrieve all API keys** using the admin endpoint.
+6. **Delete the created API key**.
+
+### Running the Test Script
+
+Make sure your FastAPI server is running, then execute:
 
 ```bash
 python test.py
 ```
 
-This script:
-
-- Creates a test API key.
-- Tests non-streaming and streaming chat completions.
-- Retrieves all API keys.
-- Deletes the test API key after execution.
-
 ---
 
-## License
+## Conclusion
 
-This project is licensed under the MIT License.
+The **duckduckgo-ai-openai-api** project offers a solid foundation for building a chat-completion API. With integrated API key management, flexible database support, and clear endpoint definitions, it is suitable for development, testing, and production environments.
+
+For further customization or questions, feel free to explore the code or reach out for additional guidance.
 
