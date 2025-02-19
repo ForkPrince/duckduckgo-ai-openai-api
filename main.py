@@ -45,51 +45,67 @@ def get_db_connection():
 
 # --- Initialize Database ---
 def init_db():
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS api_keys (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            key TEXT UNIQUE NOT NULL,
-            description TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    conn.commit()
-    conn.close()
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        if DATABASE_URL:
+            # PostgreSQL: table named openai_api_keys
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS openai_api_keys (
+                    id SERIAL PRIMARY KEY,
+                    key TEXT UNIQUE NOT NULL,
+                    description TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+        else:
+            # SQLite: table named openai_api_keys
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS openai_api_keys (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    key TEXT UNIQUE NOT NULL,
+                    description TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+        conn.commit()
+        logger.info("Database initialized successfully.")
+    finally:
+        conn.close()
 
-init_db()
+if IGNPRE_API_KEYS != "True":
+    init_db()
+else:
+    logger.info("IGNPRE_API_KEYS is active; bypassing database initialization.")
 
-def get_db_connection():
-    return sqlite3.connect(DB_FILE)
-
-# --- Dependency to validate Admin Key ---
+# --- Dependency to Validate Admin Key ---
 async def get_admin_key(authorization: str = Header(...)):
-    if IGNPRE_API_KEYS:
+    if IGNPRE_API_KEYS == "True":
         return ""
-    if not authorization:
-        raise HTTPException(status_code=401, detail="Missing Authorization header")
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid Authorization header format")
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid or missing Authorization header")
     token = authorization.split(" ")[1]
     if token != ADMIN_TOKEN:
         raise HTTPException(status_code=403, detail="Invalid admin token")
     return token
 
-# --- Existing API Key Validation ---
+# --- Dependency for API Key Validation ---
 async def get_api_key(authorization: str = Header(...)):
-    if IGNPRE_API_KEYS:
+    if IGNPRE_API_KEYS == "True":
         return ""
-    if not authorization:
-        raise HTTPException(status_code=401, detail="Missing Authorization header")
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid Authorization header format")
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid or missing Authorization header")
     token = authorization.split(" ")[1]
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id FROM api_keys WHERE key = ?", (token,))
-    result = cursor.fetchone()
-    conn.close()
+    try:
+        cursor = conn.cursor()
+        if DATABASE_URL:
+            cursor.execute("SELECT id FROM openai_api_keys WHERE key = %s", (token,))
+        else:
+            cursor.execute("SELECT id FROM openai_api_keys WHERE key = ?", (token,))
+        result = cursor.fetchone()
+    finally:
+        conn.close()
     if not result:
         raise HTTPException(status_code=401, detail="Invalid API Key")
     return token
@@ -118,11 +134,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --- Chat Completion Endpoint ---
 @app.post("/chat/completions")
 async def chat_completions(
     request: ChatCompletionRequest,
     api_key: str = Depends(get_api_key)
-    ):
+):
     prompt = request.messages[-1].content if request.messages else ""
     model = request.model if request.model else "llama-3.3-70b"
     if request.stream:
@@ -150,54 +167,71 @@ async def chat_completions(
             }]
         }
 
-# --- Protected API Keys Management Routes ---
+# --- API Key Management Endpoints ---
 @app.get("/api-keys", dependencies=[Depends(get_admin_key)])
 async def list_api_keys():
-    if IGNPRE_API_KEYS:
+    if IGNPRE_API_KEYS == "True":
         return ""
     conn = get_db_connection()
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, key, description, created_at FROM api_keys")
-    rows = cursor.fetchall()
-    conn.close()
-    keys = [dict(row) for row in rows]
+    try:
+        cursor = conn.cursor()
+        if DATABASE_URL:
+            cursor.execute("SELECT id, key, description, created_at FROM openai_api_keys")
+            rows = cursor.fetchall()
+            keys = [{"id": r[0], "key": r[1], "description": r[2], "created_at": str(r[3])} for r in rows]
+        else:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, key, description, created_at FROM openai_api_keys")
+            rows = cursor.fetchall()
+            keys = [dict(row) for row in rows]
+    finally:
+        conn.close()
     return {"api_keys": keys}
 
 @app.post("/api-keys", dependencies=[Depends(get_admin_key)])
 async def create_api_key_endpoint(api_key_create: ApiKeyCreate):
-    if IGNPRE_API_KEYS:
+    if IGNPRE_API_KEYS == "True":
         return ""
     import secrets
     new_key = secrets.token_hex(16)
     description = api_key_create.description
     conn = get_db_connection()
-    cursor = conn.cursor()
     try:
-        cursor.execute(
-            "INSERT INTO api_keys (key, description) VALUES (?, ?)",
-            (new_key, description),
-        )
+        cursor = conn.cursor()
+        if DATABASE_URL:
+            cursor.execute("INSERT INTO openai_api_keys (key, description) VALUES (%s, %s)", (new_key, description))
+        else:
+            cursor.execute("INSERT INTO openai_api_keys (key, description) VALUES (?, ?)", (new_key, description))
         conn.commit()
-        key_id = cursor.lastrowid
-    except sqlite3.IntegrityError:
+        if DATABASE_URL:
+            cursor.execute("SELECT currval(pg_get_serial_sequence('openai_api_keys','id'))")
+            key_id = cursor.fetchone()[0]
+        else:
+            key_id = cursor.lastrowid
+    except Exception:
         conn.close()
         raise HTTPException(status_code=400, detail="API Key already exists")
-    conn.close()
+    finally:
+        conn.close()
     return {"id": key_id, "key": new_key, "description": description}
 
 @app.delete("/api-keys/{key}", dependencies=[Depends(get_admin_key)])
 async def delete_api_key(key: str):
-    if IGNPRE_API_KEYS:
+    if IGNPRE_API_KEYS == "True":
         return ""
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM api_keys WHERE key = ?", (key,))
-    conn.commit()
-    if cursor.rowcount == 0:
+    try:
+        cursor = conn.cursor()
+        if DATABASE_URL:
+            cursor.execute("DELETE FROM openai_api_keys WHERE key = %s", (key,))
+        else:
+            cursor.execute("DELETE FROM openai_api_keys WHERE key = ?", (key,))
+        conn.commit()
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="API Key not found")
+    finally:
         conn.close()
-        raise HTTPException(status_code=404, detail="API Key not found")
-    conn.close()
     return {"detail": "API Key deleted"}
 
 if __name__ == "__main__":
