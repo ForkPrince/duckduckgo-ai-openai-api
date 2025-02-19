@@ -38,7 +38,7 @@ logger.info("Database mode: %s", db_mode)
 def get_db_connection():
     if DATABASE_URL:
         logger.info("Connecting to PostgreSQL.")
-        return psycopg2.connect(DATABASE_URL, sslmode='require')
+        return psycopg2.connect(DATABASE_URL)
     else:
         logger.info("Connecting to SQLite.")
         return sqlite3.connect("api_keys.db")
