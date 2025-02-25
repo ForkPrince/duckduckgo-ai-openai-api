@@ -3,6 +3,8 @@
 
 The **DuckDuckGo AI OpenAI API** is an innovative and free solution that transforms DuckDuckGo AI Chat capabilities into an OpenAI compatible API interface. Designed to empower both developers and hobbyists, this API provides a unified platform for accessing multiple state-of-the-art large language models, including **o3-mini**, **gpt-4o-mini**, **claude-3-haiku**, **mixtral-8x7b**, and **llama3.3**.
 
+This project utilizes the open-source repository [duckduckgo_search](https://github.com/deedy5/duckduckgo_search) and acknowledges its contributors for enabling this integration.
+
 ---
 
 ## 🌟 Features
@@ -200,9 +202,5 @@ python test.py
 
 ---
 
-## 🎯 Conclusion
-
-The **duckduckgo-ai-openai-api** project offers a solid foundation for building a chat-completion API. With integrated API key management, flexible database support, and clear endpoint definitions, it is suitable for development, testing, and production environments.
-
-For further customization or questions, feel free to explore the code or reach out for additional guidance. 🚀
-
+## 🎯 Disclaimer
+This library is not affiliated with DuckDuckGo and is for educational purposes only. It is not intended for commercial use or any purpose that violates DuckDuckGo's Terms of Service. By using this library, you acknowledge that you will not use it in a way that infringes on DuckDuckGo's terms. The official DuckDuckGo website can be found at https://duckduckgo.com.
