@@ -1,10 +1,25 @@
-# 🚀 duckduckgo-ai-openai-api 
+# 🚀 DuckDuckGo AI OpenAI API 
 # Documentation
 
-DuckDuckGo AI OpenAI API is a free, powerful AI chat completions service built with FastAPI. It mimics OpenAI's API while leveraging DuckDuckGo's AI models to deliver chat completions with both streaming and non-streaming responses.
+The **DuckDuckGo AI OpenAI API** is an innovative and free solution that transforms DuckDuckGo AI Chat capabilities into an OpenAI compatible API interface. Designed to empower both developers and hobbyists, this API provides a unified platform for accessing multiple state-of-the-art large language models, including **o3-mini**, **gpt-4o-mini**, **claude-3-haiku**, **mixtral-8x7b**, and **llama3.3**.
 
-🛡️ The API supports API key management and uses databases like SQLite or PostgreSQL to store API keys. Alternatively, API key validation can be bypassed, allowing the service to run without using any databases.
+---
 
+## 🌟 Features
+
+- 💬 **Chat Completions Endpoint (Streaming/non-streaming)**: Processes chat requests using DuckDuckGo search and returns responses. Supports both streaming and non-streaming modes.
+- 🔑 **API Key Management**: Create, list, and delete API keys to secure access to the chat endpoint.
+- 🗄️ **Flexible Database Support**: Uses PostgreSQL or SQLite to store API keys. If API key validation is bypassed, no database is required.
+
+---
+
+## Models
+- `gpt-4o-mini`
+- `llama-3.3-70b`
+- `claude-3-haiku`
+- `o3-min`
+- `mixtral-8x7b`
+- Defaults to `gpt-4o-mini`
 ---
 
 ## 📂 Project Structure
@@ -15,14 +30,6 @@ project/
 ├── test.py          # 🧪 Script to test the API endpoints
 └── requirements.txt # 📜 Python dependencies
 ```
-
----
-
-## 🌟 Features
-
-- 💬 **Chat Completions Endpoint**: Processes chat requests using DuckDuckGo search and returns responses. Supports both streaming and non-streaming modes.
-- 🔑 **API Key Management**: Create, list, and delete API keys to secure access to the chat endpoint.
-- 🗄️ **Flexible Database Support**: Uses PostgreSQL or SQLite to store API keys. If API key validation is bypassed, no database is required.
 
 ---
 
