@@ -36,7 +36,7 @@
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${API_KEY}`
                 },
-                body: JSON.stringify({ messages: [{ "role": "user", "content": prompt }], model:model })
+                body: JSON.stringify({ messages: [{ "role": "user", "content": prompt }], model, stream: false })
             });
             const output = await response.json();
             document.getElementById("output_chat").innerText = JSON.stringify({ input, output }, null, 2);

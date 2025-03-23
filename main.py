@@ -119,7 +119,7 @@ class ChatMessage(BaseModel):
 class ChatCompletionRequest(BaseModel):
     model: str
     messages: List[ChatMessage]
-    stream: Optional[bool] = False
+    stream: Optional[bool] = True
 
 class ApiKeyCreate(BaseModel):
     description: Optional[str] = None
